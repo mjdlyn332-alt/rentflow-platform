@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
@@ -31,8 +32,29 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "الملخص",
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="properties"
+        options={{
+          title: "العقارات",
+          tabBarIcon: ({ color }) => <MaterialIcons size={25} name="apartment" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="collections"
+        options={{
+          title: "التحصيل",
+          tabBarIcon: ({ color }) => <MaterialIcons size={25} name="account-balance-wallet" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "حسابي",
+          tabBarIcon: ({ color }) => <MaterialIcons size={25} name="person-outline" color={color} />,
         }}
       />
     </Tabs>
