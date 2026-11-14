@@ -1,37 +1,32 @@
-# Django integration contract
+# عقد تكامل Django المنفذ
 
-هذا المجلد يوثق نقطة التكامل الخلفية المطلوبة في وثيقة PRD/SRS. لا يحتوي حالياً على خادم Django أو أسرار تشغيل؛ تطبيق الجوال يعمل ببيانات mock إلى أن يُنشأ backend مستقل.
+أصبح `backend/` خادم Django REST فعلياً، مع PostgreSQL/Neon في الإنتاج، JWT للتطبيق، عزل server-side حسب `organization`، ونماذج تشغيلية متعددة المنشآت. تطبيق الجوال يبقى متوافقاً مع العقد ويستطيع استخدام mock adapter محلياً عند غياب عنوان API.
 
-## حدود المسؤولية
+## ما تم تنفيذه
 
-يقدم Django REST API جلسة قصيرة العمر، ويقرأ `organization` من الجلسة لا من جسم الطلب. كل طلب يمر عبر فحص حالة المستخدم والمنشأة والدور و`tokenVersion`. تُطبّق صلاحيات STAFF كمصفوفة مجال × (قراءة، إنشاء، تعديل، حذف)، وتُطبّق أعلام المحصل `canCollectRent` و`canCollectServices` و`canCollectMaintenance` و`canCreateServices` على الخادم.
+- جلسة JWT قصيرة العمر عبر `POST /api/auth/login` و`POST /api/auth/refresh` و`GET /api/auth/me`.
+- نماذج Organization وUser والأدوار SUPER_ADMIN وOWNER وSTAFF وCOLLECTOR وRENTER وUNIT_OWNER.
+- العقارات والوحدات والأطراف والعقود والأقساط.
+- الخدمات وقراءات العدادات وفواتير الخدمات.
+- الصندوق والتحصيل والسندات؛ إنشاء السند ذري داخل transaction مع قفل الصندوق ومفتاح idempotency وتسجيل AuditEvent، ومنع تعديل/حذف السند المرحّل.
+- الصيانة والإشعارات وشجرة الحسابات وقيود اليومية كأساس للمحاسبة.
+- `GET /api/dashboard` يعيد مؤشرات المنشأة والبيانات التي يحق للدور رؤيتها.
+- `GET /api/health` غير محمي لاستخدام Render health check.
 
-تُنفّذ قواعد المجال في services داخل modular monolith: العقارات والوحدات، الأطراف، العقود والأقساط، الخدمات والعدادات، التحصيل والصناديق، الصيانة، الإخلاء والتأمين، المحاسبة، الإشعارات والتقارير. كل عملية مالية متعددة الجداول داخل transaction واحدة وبـ idempotency key، وكل مستند مرحّل يُصحح بمستند عكسي لا بالتعديل أو الحذف.
+## المسارات
 
-## واجهات يستهلكها التطبيق
-
-| المجموعة | أمثلة |
+| المجموعة | المسارات |
 | --- | --- |
-| الجلسة | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` |
-| الملخص | `GET /api/dashboard?role=RENTER` |
-| العقود | `GET /api/agreements`, `GET /api/agreements/{id}` |
-| الخدمات | `GET /api/service-bills`, `GET /api/meters`, `POST /api/readings` |
-| التحصيل | `GET /api/cashboxes`, `POST /api/vouchers`, `POST /api/vouchers/{id}/reverse` |
-| العقارات | `GET /api/properties`, `GET /api/properties/{id}/units` |
-| الإشعارات | `GET /api/notifications`, `POST /api/notifications/{id}/read` |
+| الجلسة | `POST /api/auth/login`, `POST /api/auth/refresh`, `GET /api/auth/me` |
+| الملخص | `GET /api/dashboard` |
+| العقارات | `/api/properties`, `/api/units`, `/api/parties` |
+| العقود | `/api/agreements`, `/api/installments` |
+| الخدمات | `/api/services`, `/api/readings`, `/api/service-bills` |
+| التحصيل | `/api/cashboxes`, `POST /api/vouchers` |
+| التشغيل | `/api/maintenance`, `/api/notifications` |
 
-## شكل الاستجابة المختصر
+كل endpoint تشغيلي يشتق المنشأة من المستخدم المصادق عليه ولا يقبل `organization_id` من العميل. المبالغ Decimal والتواريخ ISO-8601. ترحيل القيود والفترات المقفلة والتسويات المتقدمة موضوعة في نموذج المحاسبة وتحتاج استكمال قواعد الأعمال قبل تشغيلها إنتاجياً.
 
-```json
-{
-  "data": [],
-  "meta": { "organization": "org_123", "page": 1, "pageSize": 20 },
-  "errors": []
-}
-```
+## التشغيل والنشر
 
-المبالغ تُعاد كنص Decimal مع العملة، والتواريخ ISO-8601 مع المنطقة الزمنية للمنشأة. لا يثق التطبيق بالواجهة في الصلاحيات أو المبالغ أو الحالات؛ الحالة النهائية تأتي من Django.
-
-## PostgreSQL/RLS
-
-يضبط Django `SET LOCAL app.current_org` داخل كل transaction ويستخدم اتصال تطبيق محدود الصلاحية، مع اتصال منفصل لمالك النظام لا يرى الجداول التشغيلية. تُفهرس القوائم ابتداءً من `organization_id` وتُضاف اختبارات عزل، توازن القيود، ورصيد التأمين إلى CI قبل نشر نسخة إنتاجية.
+محلياً: `backend/.venv/bin/python backend/manage.py test core` مع `DATABASE_URL` غير مضبوط يستخدم SQLite للاختبارات. إنتاجياً: `DATABASE_URL` هو اتصال Neon الخاص، وRender يشغّل migrations ثم Gunicorn عبر `backend/Dockerfile` و`render.yaml`.
