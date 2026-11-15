@@ -1,13 +1,14 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
+import { AuthProvider, useAuth } from "@/lib/auth/auth-context";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -85,10 +86,9 @@ export default function RootLayout() {
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
           {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
           {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="oauth/callback" />
-          </Stack>
+          <AuthProvider>
+            <RouteGuard />
+          </AuthProvider>
           <StatusBar style="auto" />
         </QueryClientProvider>
       </trpc.Provider>
@@ -116,4 +116,25 @@ export default function RootLayout() {
       <SafeAreaProvider initialMetrics={providerInitialMetrics}>{content}</SafeAreaProvider>
     </ThemeProvider>
   );
+}
+
+function RouteGuard() {
+  const router = useRouter();
+  const segments = useSegments() as string[];
+  const { user, loading } = useAuth();
+  const inLogin = segments[0] === "login";
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user && !inLogin) router.replace("/login" as never);
+    if (user && inLogin) router.replace("/");
+  }, [inLogin, loading, router, user]);
+
+  if (loading) return <View style={{ flex: 1, backgroundColor: "#F7F8F6" }} />;
+
+  return <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="oauth/callback" />
+          </Stack>
 }

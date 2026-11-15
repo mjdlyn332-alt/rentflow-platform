@@ -6,8 +6,12 @@ import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export default function TabLayout() {
+  const { user } = useAuth();
+  const canSeeProperties = ["OWNER", "STAFF", "COLLECTOR"].includes(user?.role ?? "");
+  const canSeeCollections = ["OWNER", "STAFF", "COLLECTOR"].includes(user?.role ?? "");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
@@ -40,6 +44,7 @@ export default function TabLayout() {
         name="properties"
         options={{
           title: "العقارات",
+          href: canSeeProperties ? undefined : null,
           tabBarIcon: ({ color }) => <MaterialIcons size={25} name="apartment" color={color} />,
         }}
       />
@@ -47,6 +52,7 @@ export default function TabLayout() {
         name="collections"
         options={{
           title: "التحصيل",
+          href: canSeeCollections ? undefined : null,
           tabBarIcon: ({ color }) => <MaterialIcons size={25} name="account-balance-wallet" color={color} />,
         }}
       />
