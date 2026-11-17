@@ -10,8 +10,8 @@ import { useAuth } from "@/lib/auth/auth-context";
 
 export default function TabLayout() {
   const { user } = useAuth();
-  const canSeeProperties = ["OWNER", "STAFF", "COLLECTOR"].includes(user?.role ?? "");
-  const canSeeCollections = ["OWNER", "STAFF", "COLLECTOR"].includes(user?.role ?? "");
+  const canSeeProperties = ["SUPER_ADMIN", "OWNER", "STAFF", "COLLECTOR", "UNIT_OWNER"].includes(user?.role ?? "");
+  const canSeeCollections = ["SUPER_ADMIN", "OWNER", "STAFF", "COLLECTOR"].includes(user?.role ?? "");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
