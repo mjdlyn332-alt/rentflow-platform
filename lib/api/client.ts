@@ -131,7 +131,12 @@ export const djangoApi = {
   },
   me: () => djangoRequest<DjangoUser>("/api/auth/me"),
   dashboard: () => djangoRequest<DashboardResponse>("/api/dashboard"),
+  properties: () => djangoRequest<Array<{ id: string; name: string; code: string; address: string; city: string; units_count: number; occupied_count: number }>>("/api/properties"),
+  createProperty: (data: { name: string; code: string; address?: string; city?: string }) => djangoRequest("/api/properties", { method: "POST", body: JSON.stringify(data) }),
+  units: (property?: string) => djangoRequest<Array<{ id: string; property: string; property_name: string; number: string; floor: string; status: string; area_sqm: string | null }>>(`/api/units${property ? `?property=${encodeURIComponent(property)}` : ""}`),
+  createUnit: (data: { property: string; number: string; floor?: string; status?: string; area_sqm?: string }) => djangoRequest("/api/units", { method: "POST", body: JSON.stringify(data) }),
   cashboxes: () => djangoRequest<Array<{ id: string; name: string; balance: string; is_active: boolean }>>("/api/cashboxes"),
-  vouchers: () => djangoRequest<Array<{ id: string; number: string; kind: string; amount: string; reference: string; status: string; created_at: string }>>("/api/vouchers"),
+  vouchers: () => djangoRequest<Array<{ id: string; number: string; cashbox: string; kind: string; amount: string; reference: string; status: string; created_at: string }>>("/api/vouchers"),
+  createVoucher: (data: { cashbox: string; kind: string; amount: string; reference?: string; idempotency_key: string }) => djangoRequest("/api/vouchers", { method: "POST", body: JSON.stringify(data) }),
   logout: () => tokenStore.clear(),
 };
